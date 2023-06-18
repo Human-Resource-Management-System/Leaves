@@ -3,94 +3,198 @@ package com.controllers;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.google.gson.Gson;
+import com.interfaces.EmployeeDAO;
 import com.interfaces.EmployeeLeaveRequestDAO;
+import com.models.Employee;
+import com.models.EmployeeLeaveInputModel;
+import com.models.EmployeeLeaveModel;
 import com.models.EmployeeLeaveRequest;
 import com.models.EmployeeLeaveRequestId;
+import com.models.JobGradeWiseLeaves;
+import com.models.LeaveValidationModel;
+import com.services.EmployeeLeaveService;
 
 @Controller
 public class LeaveController {
+	
+	@Autowired
+	public LeaveController(EmployeeLeaveRequest leaveRequest, EmployeeLeaveRequestId leaveRequestId,Gson gson,EmployeeLeaveService employeeService) {
+		this.leaveRequest = leaveRequest;
+		this.leaveRequestId = leaveRequestId;
+		this.gson = gson;
+		this.employeeService = employeeService;
+	}
 
-	private final EmployeeLeaveRequestDAO leaveRequestDAO;
+	private EmployeeLeaveRequest leaveRequest;
+	private EmployeeLeaveRequestId leaveRequestId;
+	private Gson gson;
+	private EmployeeLeaveService employeeService;
+	
+	@PersistenceContext
+	private EntityManager entityManager;
 
 	@Autowired
-	public LeaveController(EmployeeLeaveRequestDAO leaveRequestDAO) {
-		this.leaveRequestDAO = leaveRequestDAO;
-	}
+	private EmployeeLeaveRequestDAO leaveRequestDAO;
+	
+	@Autowired
+	private EmployeeDAO employeeDAO;
+	
+	@Autowired
+	private ApplicationContext context;
+	
 
-	@RequestMapping(value = "/login", method = RequestMethod.GET)
-	public String login(HttpServletRequest request) {
-
-		System.out.println("in");
-
-		HttpSession ses = request.getSession();
-		ses.setAttribute("login", true);
-		ses.setAttribute("employeeid", "2");
-		return "login";
-	}
 
 	@RequestMapping(value = "/leaveform", method = RequestMethod.GET)
-	public String leaverequest(HttpServletRequest request) {
-
-		HttpSession ses = request.getSession(false);
-		System.out.println(ses.getAttribute("login"));
-		if (ses.getAttribute("login") == null || !(boolean) ses.getAttribute("login"))
-			return "login";
-		else
+	public String leaverequest(HttpServletRequest request,Model model) {
+		    // should have the employee id in session ( pending )
+		 
+		  Employee employee = employeeDAO.getEmployee(1);
+		  JobGradeWiseLeaves leavesProvidedStatistics = leaveRequestDAO.getJobGradeWiseLeaves(employee.getEmplJbgrId());
+		  List<EmployeeLeaveRequest> leaves = leaveRequestDAO.getApprovedEmployeeAndLeaveRequestData(employee.getEmplId());
+		  LeaveValidationModel validation = employeeService.calculateLeavesTaken(leaves,leavesProvidedStatistics);
+		  model.addAttribute("validationData", validation);
 			return "leaveform";
 	}
 
 	@Transactional
 	@RequestMapping(value = "/submitleave", method = RequestMethod.POST)
-	public String submitLeaveRequest(@RequestParam("employeeId") int employeeId,
-			@RequestParam("leaveStartDate") String leaveStartDate, @RequestParam("leaveEndDate") String leaveEndDate,
-			@RequestParam("leaveType") String leaveType, @RequestParam("reason") String reason, HttpSession session) {
+	public ResponseEntity<String> submitLeaveRequest(@ModelAttribute EmployeeLeaveInputModel employeeLeaveInputModel) {
+		
+		try {
 
-		EmployeeLeaveRequest leaveRequest = new EmployeeLeaveRequest();
-		leaveRequest.setLeaveStartDate(LocalDate.parse(leaveStartDate, DateTimeFormatter.ISO_DATE));
-		leaveRequest.setLeaveEndDate(LocalDate.parse(leaveEndDate, DateTimeFormatter.ISO_DATE));
-		leaveRequest.setLeaveType(leaveType);
-		leaveRequest.setReason(reason);
+		leaveRequest.setLeaveStartDate(LocalDate.parse(employeeLeaveInputModel.getLeaveStartDate(), DateTimeFormatter.ISO_DATE));
+		leaveRequest.setLeaveEndDate(LocalDate.parse(employeeLeaveInputModel.getLeaveEndDate(), DateTimeFormatter.ISO_DATE));
+		leaveRequest.setLeaveType(employeeLeaveInputModel.getLeaveType());
+		leaveRequest.setReason(employeeLeaveInputModel.getReason());
 		leaveRequest.setRequestDateTime(LocalDateTime.now());
 
-		EmployeeLeaveRequestId leaveRequestId = leaveRequest.getLeaveRequestId();
-		if (leaveRequestId == null) {
-			leaveRequestId = new EmployeeLeaveRequestId();
-			leaveRequestId.setEmployeeId(employeeId);
-			leaveRequest.setLeaveRequestId(leaveRequestId);
-		} else if (leaveRequestId.getEmployeeId() == 0) {
-			leaveRequestId.setEmployeeId(employeeId);
-		}
+		
+		leaveRequestId.setEmployeeId(employeeLeaveInputModel.getEmployeeId());
 
-		int nextLeaveRequestIndex = leaveRequestDAO.getNextLeaveRequestIndex(employeeId);
+		int nextLeaveRequestIndex = leaveRequestDAO.getNextLeaveRequestIndex(employeeLeaveInputModel.getEmployeeId());
 		leaveRequestId.setLeaveRequestIndex(nextLeaveRequestIndex);
+		
+		leaveRequest.setLeaveRequestId(leaveRequestId);
 
 		leaveRequestDAO.saveEmployeeLeaveRequest(leaveRequest);
-
-		return "success";
+		
+		}catch(Exception e) {
+			System.out.println(e);
+			String errorMessage = "Internal Server Error";
+		    return new ResponseEntity<>(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		
+		return ResponseEntity.ok("Success");
 	}
 
-	@RequestMapping(value = "/leaveStatistics", method = RequestMethod.GET)
-	public void statistics(HttpSession session) {
+	
+	
+	
+	@RequestMapping(value = "/leaveRequests", method = RequestMethod.GET)
+	public String leaveRequests(HttpSession session,Model model) {
 
-		System.out.println("approved" + leaveRequestDAO
-				.getApprovedLeavesCount(Integer.parseInt(session.getAttribute("employeeid").toString().trim())));
+		// need to get the Admin Id
+		 List<Employee> employees = employeeDAO.getEmployeesByHRAndManager(123);
+		 List<EmployeeLeaveModel> outputmodel = new ArrayList<>();
+		 for(Employee employee : employees) {
+			 List<EmployeeLeaveRequest> leaves = leaveRequestDAO.getEmployeeAndLeaveRequestData(employee.getEmplId());
+			 for(EmployeeLeaveRequest leave : leaves) {
+				 EmployeeLeaveModel leavemodel = context.getBean(EmployeeLeaveModel.class);
+				 leavemodel.setEmpId(employee.getEmplId());
+				 leavemodel.setName(employee.getEmplFirstname()+employee.getEmplLastname());
+				 leavemodel.setLeaveRequestIndex(leave.getLeaveRequestId().getLeaveRequestIndex());
+				 leavemodel.setLeaveType(leave.getLeaveType());
+				 leavemodel.setLeaveStartDate(leave.getLeaveStartDate());
+				 leavemodel.setLeaveEndDate(leave.getLeaveEndDate());
+				 leavemodel.setReason(leave.getReason());
+				 
+				 outputmodel.add(leavemodel);
+			 }
+			 
+		 }
+		 
+		 
+		 model.addAttribute("data", outputmodel);
+		 
+		 return "AdminLeaveRequests";
 
 	}
-
-	@RequestMapping(value = "/logout", method = RequestMethod.GET)
-	public String logout(HttpServletRequest request) {
-		request.getSession(false).invalidate();
-		return "login";
+	
+	@RequestMapping(value="/rejectLeave",method=RequestMethod.POST)
+	@Transactional
+	public ResponseEntity<String> rejectLreave(@ModelAttribute EmployeeLeaveModel employeeLeaveModel){
+		try {
+			System.out.println(employeeLeaveModel.getEmpId());
+			System.out.println(employeeLeaveModel.getLeaveRequestIndex());
+			System.out.println("rejecting...");
+			
+			leaveRequestId.setEmployeeId(employeeLeaveModel.getEmpId());
+			leaveRequestId.setLeaveRequestIndex(employeeLeaveModel.getLeaveRequestIndex());
+			
+			EmployeeLeaveRequest employeeLeaveRequest =  leaveRequestDAO.getEmployeeLeaveRequest(leaveRequestId);
+			
+			if (employeeLeaveRequest != null) {
+			    employeeLeaveRequest.setApprovedBy(-1);
+			}
+			
+		}catch(Exception e) {
+			System.out.println(e);
+			String errorMessage = "Internal Server Error";
+		    return new ResponseEntity<>(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		return ResponseEntity.ok("successfully status updated");
 	}
+	
+	@RequestMapping(value="/acceptLeave",method=RequestMethod.POST)
+	@Transactional
+	public ResponseEntity<String> acceptLeave(@ModelAttribute EmployeeLeaveInputModel employeeLeaveInputModel,HttpSession session){
+		try {
+			System.out.println(employeeLeaveInputModel.getEmployeeId());
+			System.out.println(employeeLeaveInputModel.getLeaveRequestIndex());
+			System.out.println("rejecting...");
+			
+			leaveRequestId.setEmployeeId(employeeLeaveInputModel.getEmployeeId());
+			leaveRequestId.setLeaveRequestIndex(employeeLeaveInputModel.getLeaveRequestIndex());
+			
+			EmployeeLeaveRequest employeeLeaveRequest =  leaveRequestDAO.getEmployeeLeaveRequest(leaveRequestId);
+			 
+			// should take care of it
+			int adminId = (int)session.getAttribute("adminId");
+			
+			if (employeeLeaveRequest != null) {
+			    employeeLeaveRequest.setApprovedBy(adminId);
+			    employeeLeaveRequest.setApprovedLeaveEndDate(LocalDate.parse(employeeLeaveInputModel.getLeaveEndDate(), DateTimeFormatter.ISO_DATE));
+			    employeeLeaveRequest.setApprovedLeaveStartDate(LocalDate.parse(employeeLeaveInputModel.getLeaveStartDate(), DateTimeFormatter.ISO_DATE));
+			    employeeLeaveRequest.setApprovedRemarks(employeeLeaveInputModel.getRemarks());
+			}
+			
+		}catch(Exception e) {
+			System.out.println(e);
+			String errorMessage = "Internal Server Error";
+		    return new ResponseEntity<>(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		return ResponseEntity.ok("successfully status updated");
+	}
+
 }

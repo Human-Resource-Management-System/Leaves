@@ -1,15 +1,19 @@
 package com.implementations;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import org.springframework.stereotype.Repository;
 
 import com.interfaces.EmployeeLeaveRequestDAO;
 import com.models.EmployeeLeaveRequest;
+import com.models.EmployeeLeaveRequestId;
+import com.models.JobGradeWiseLeaves;
 
 @Repository
 public class EmployeeLeaveRequestDAOImpl implements EmployeeLeaveRequestDAO {
@@ -22,6 +26,7 @@ public class EmployeeLeaveRequestDAOImpl implements EmployeeLeaveRequestDAO {
 		entityManager.persist(leaveRequest);
 	}
 
+	@Override
 	public int getNextLeaveRequestIndex(int employeeId) {
 		String queryString = "SELECT COALESCE(MAX(lr.leaveRequestId.leaveRequestIndex), 0) + 1 "
 				+ "FROM EmployeeLeaveRequest lr " + "WHERE lr.leaveRequestId.employeeId = :employeeId";
@@ -30,22 +35,34 @@ public class EmployeeLeaveRequestDAOImpl implements EmployeeLeaveRequestDAO {
 		return (Integer) query.getSingleResult();
 	}
 
-	// no of approved leaves in current month
-	public int getApprovedLeavesCount(int employeeId) {
-		LocalDate currentDate = LocalDate.now();
-		LocalDate firstDayOfMonth = currentDate.withDayOfMonth(1);
-		LocalDate lastDayOfMonth = currentDate.withDayOfMonth(currentDate.lengthOfMonth());
-
-		String queryString = "SELECT COUNT(lr) " + "FROM EmployeeLeaveRequest lr "
-				+ "WHERE lr.leaveRequestId.employeeId = :employeeId "
-				+ "AND lr.approvedLeaveStartDate BETWEEN :firstDayOfMonth AND :lastDayOfMonth "
-				+ "AND lr.approvedLeaveEndDate BETWEEN :firstDayOfMonth AND :lastDayOfMonth";
-
-		Query query = entityManager.createQuery(queryString);
-		query.setParameter("employeeId", employeeId);
-		query.setParameter("firstDayOfMonth", firstDayOfMonth);
-		query.setParameter("lastDayOfMonth", lastDayOfMonth);
-
-		return ((Number) query.getSingleResult()).intValue();
+  @Override
+	public List<EmployeeLeaveRequest> getEmployeeAndLeaveRequestData(int id) {
+		String jpqlQuery = "SELECT elrq FROM EmployeeLeaveRequest elrq "
+				+ "WHERE elrq.leaveRequestId.employeeId = :employeeIds "+"AND elrq.approvedBy = 0";
+		TypedQuery<EmployeeLeaveRequest> query = entityManager.createQuery(jpqlQuery, EmployeeLeaveRequest.class);
+		query.setParameter("employeeIds", id);
+		List<EmployeeLeaveRequest> result = query.getResultList();
+		return result;
 	}
+  
+
+  public List<EmployeeLeaveRequest> getApprovedEmployeeAndLeaveRequestData(int id) {
+		String jpqlQuery = "SELECT elrq FROM EmployeeLeaveRequest elrq "
+				+ "WHERE elrq.leaveRequestId.employeeId = :employeeIds "+"AND elrq.approvedBy > 0 ";
+		TypedQuery<EmployeeLeaveRequest> query = entityManager.createQuery(jpqlQuery, EmployeeLeaveRequest.class);
+		query.setParameter("employeeIds", id);
+		List<EmployeeLeaveRequest> result = query.getResultList();
+		return result;
+	}
+
+	@Override
+	public EmployeeLeaveRequest getEmployeeLeaveRequest(EmployeeLeaveRequestId key) {
+		return entityManager.find(EmployeeLeaveRequest.class, key);
+	}
+
+	@Override
+	public JobGradeWiseLeaves getJobGradeWiseLeaves(String jobGradeId) {
+		return entityManager.find(JobGradeWiseLeaves.class, jobGradeId);
+	}
+
 }

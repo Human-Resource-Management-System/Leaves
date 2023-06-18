@@ -1,5 +1,7 @@
 package com.implementations;
 
+import java.util.List;
+
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 
@@ -14,7 +16,19 @@ public class EmployeeDAOImpl implements EmployeeDAO {
 	private EntityManager entityManager;
 
 	@Override
-	public Employee getEmployeeById(int emplId) {
-		return entityManager.find(Employee.class, emplId);
+	public List<Employee> getEmployeesByHRAndManager(int employeeId) {
+		String query = "SELECT e FROM Employee e " +
+                "WHERE e.emplHrEmplId = :employeeId OR e.emplRmanagerEmplId = :employeeId";
+		
+        return entityManager.createQuery(query, Employee.class)
+                .setParameter("employeeId", employeeId)
+                .getResultList();
 	}
+
+	@Override
+	public Employee getEmployee(int employeeId) {
+		return entityManager.find(Employee.class, employeeId);
+	}
+
+	
 }

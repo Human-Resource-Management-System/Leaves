@@ -40,19 +40,44 @@ h1 {
 	font-size: 16px;
 	padding: 10px 20px;
 }
+
+.process-msg {
+	color: #1F6E8C;
+	font-weight: bold;
+}
+
+.leave-success-msg {
+	color: #609966;
+	font-weight: bold;
+}
+
+.leave-error-msg {
+	color: #ff7b7b;
+	font-weight: bold;
+}
 </style>
 
-<script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"
+	integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
+	crossorigin="anonymous"></script>
 </head>
 <body>
+   
+    <%@ page import="com.models.LeaveValidationModel" %>
+
 	<h1>Leave Form</h1>
+
+	<%
+	session.setAttribute("employeeid", 1);
+	LeaveValidationModel validationData = (LeaveValidationModel)request.getAttribute("validationData");
+	%>
 
 	<form id="leave-form" method="post">
 
 		<div class="form-group">
 			<label for="employee-id">Employee ID:</label> <input type="number"
 				id="employee-id" name="employeeId"
-				value="${sessionScope.employeeid}" readonly>
+				value="<%=(Integer) session.getAttribute("employeeid")%>" readonly>
 		</div>
 
 
@@ -79,31 +104,75 @@ h1 {
 			<label for="reason">Reason:</label>
 			<textarea id="reason" name="reason" required></textarea>
 		</div>
-		
-		
+		<input class="submit-button" type="button" value="Submit"
+			onclick="submitLeave()">
 
-		<input class="submit-button" type="button" value="Submit" onclick="submitLeave()">
+		<div id="info-msg"></div>
 	</form>
 	<script>
-	function submitLeave() {
-		 
-     console.log($("#leave-form").serialize())
-		
+		function submitLeave() {
 
-		  // Send the Ajax request
-		  $.ajax({
-		    url: "submitleave",
-		    type: "POST",
-		    data: $("#leave-form").serialize(),
-		    success: function(response) {
-		      console.log("Leave request submitted successfully");
-		      // Perform any additional actions or display a success message
-		    },
-		    error: function(xhr, status, error) {
-		      console.log("Error submitting leave request:", error);
-		      // Display an error message or handle the error as needed
-		    }
-		  });
+			console.log($("#leave-form").serialize())
+
+			$("#info-msg").removeClass().addClass("process-msg").html("Applying ... ");
+			
+			
+			// validation
+			
+			  var validationData = {
+        allowedTotalLeaves: <%= validationData.getAllowedTotalLeaves() %>,
+        allowedSickLeaves: <%= validationData.getAllowedSickLeaves() %>,
+        allowedCasualLeaves: <%= validationData.getAllowedCasualLeaves() %>,
+        allowedOtherLeaves: <%= validationData.getAllowedOtherLeaves() %>,
+        takenTotalLeaves: <%= validationData.getTakenTotalLeaves() %>,
+        takenSickLeaves: <%= validationData.getTakenSickLeaves() %>,
+        takenCasualLeaves: <%= validationData.getTakenCasualLeaves() %>,
+        takenOtherLeaves: <%= validationData.getTakenOtherLeaves() %>
+    };
+
+    // Check if the leave is within the allowed limits
+    var leaveType = $("#leave-type").val();
+    var leaveStartDate = new Date($("#leave-start-date").val());
+    var leaveEndDate = new Date($("#leave-end-date").val());
+    var numberOfDays = Math.round((leaveEndDate - leaveStartDate) / (24 * 60 * 60 * 1000));
+
+    // Perform validation
+    if (leaveType === "SICK" && numberOfDays > (validationData.allowedSickLeaves - validationData.takenSickLeaves)) {
+        $("#info-msg").removeClass().addClass("leave-error-msg").html("You have exceeded the allowed number of sick leaves.");
+        return;
+    } 
+    if (leaveType === "CASL" && numberOfDays > (validationData.allowedCasualLeaves - validationData.takenCasualLeaves)) {
+        $("#info-msg").removeClass().addClass("leave-error-msg").html("You have exceeded the allowed number of casual leaves.");
+        return;
+    } 
+    if (leaveType === "OTHR" && numberOfDays > (validationData.allowedOtherLeaves - validationData.takenOtherLeaves)) {
+        $("#info-msg").removeClass().addClass("leave-error-msg").html("You have exceeded the allowed number of other leaves.");
+        return;
+    } 
+			
+			// Send the Ajax request
+			$.ajax({
+				url : "submitleave",
+				type : "POST",
+				data : $("#leave-form").serialize(),
+				success : function(response) {
+					console.log("Leave request submitted successfully");
+					$("#info-msg").removeClass().addClass("leave-success-msg")
+							.html("leave applied successfully");
+					
+					setTimeout(function() {
+			            location.reload();
+			        }, 1500);
+					
+				},
+				error : function(xhr, status, error) {
+					console.log("Error submitting leave request:", error);
+					$("#info-msg").removeClass().addClass("leave-error-msg")
+							.html("something went wrong");
+
+				}
+			});
+
 		}
 	</script>
 </body>
