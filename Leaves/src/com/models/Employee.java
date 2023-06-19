@@ -44,10 +44,18 @@ public class Employee {
 	@Column(name = "empl_designation")
 	private String emplDesignation;
 
+	@Column(name = "empl_basicsal")
 	private int basic_sal;
+
+	@Column(name = "empl_variablesal")
 	private int variable_sal;
+
+	@Column(name = "empl_fixedsal")
 	private int fixed_sal;
+
+	@Column(name = "empl_ctc")
 	private int ctc;
+
 	@Column(name = "empl_offemail")
 	private String emplOffemail;
 

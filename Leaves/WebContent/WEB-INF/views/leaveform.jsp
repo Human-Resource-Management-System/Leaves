@@ -127,7 +127,11 @@ h1 {
         takenTotalLeaves: <%= validationData.getTakenTotalLeaves() %>,
         takenSickLeaves: <%= validationData.getTakenSickLeaves() %>,
         takenCasualLeaves: <%= validationData.getTakenCasualLeaves() %>,
-        takenOtherLeaves: <%= validationData.getTakenOtherLeaves() %>
+        takenOtherLeaves: <%= validationData.getTakenOtherLeaves() %>,
+        pendingTotalLeaves: <%= validationData.getPendingTotalNoOfLeaves()%>,
+        pendingCasualLeaves: <%= validationData.getPendingCasualLeaves()%>,
+        pendingSickLeaves:  <%= validationData.getPendingSickLeaves()%>,
+        pendingOtherLeaves: <%= validationData.getPendingOtherLeaves()%>
     };
 
     // Check if the leave is within the allowed limits
@@ -137,15 +141,24 @@ h1 {
     var numberOfDays = Math.round((leaveEndDate - leaveStartDate) / (24 * 60 * 60 * 1000));
 
     // Perform validation
-    if (leaveType === "SICK" && numberOfDays > (validationData.allowedSickLeaves - validationData.takenSickLeaves)) {
+    if (leaveType === "SICK" && numberOfDays > (validationData.allowedSickLeaves - validationData.takenSickLeaves - validationData.pendingSickLeaves)) {
+    	if(validationData.pendingSickLeaves != 0)
+            $("#info-msg").removeClass().addClass("leave-error-msg").html("You have Pending Sick Leave Requests.");
+    	else
         $("#info-msg").removeClass().addClass("leave-error-msg").html("You have exceeded the allowed number of sick leaves.");
         return;
     } 
-    if (leaveType === "CASL" && numberOfDays > (validationData.allowedCasualLeaves - validationData.takenCasualLeaves)) {
+    if (leaveType === "CASL" && numberOfDays > (validationData.allowedCasualLeaves - validationData.takenCasualLeaves - validationData.pendingCasualLeaves)) {
+    	if(validationData.pendingCasualLeaves != 0)
+            $("#info-msg").removeClass().addClass("leave-error-msg").html("You have Pending casual leave Requests.");
+        else
         $("#info-msg").removeClass().addClass("leave-error-msg").html("You have exceeded the allowed number of casual leaves.");
         return;
     } 
-    if (leaveType === "OTHR" && numberOfDays > (validationData.allowedOtherLeaves - validationData.takenOtherLeaves)) {
+    if (leaveType === "OTHR" && numberOfDays > (validationData.allowedOtherLeaves - validationData.takenOtherLeaves - validationData.pendingOtherLeaves)) {
+    	if(validationData.pendingOtherLeaves != 0)
+            $("#info-msg").removeClass().addClass("leave-error-msg").html("You have Pending other leave Requests");
+    	else
         $("#info-msg").removeClass().addClass("leave-error-msg").html("You have exceeded the allowed number of other leaves.");
         return;
     } 

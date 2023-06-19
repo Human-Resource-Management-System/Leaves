@@ -1,6 +1,5 @@
 package com.implementations;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -35,20 +34,30 @@ public class EmployeeLeaveRequestDAOImpl implements EmployeeLeaveRequestDAO {
 		return (Integer) query.getSingleResult();
 	}
 
-  @Override
+	@Override
 	public List<EmployeeLeaveRequest> getEmployeeAndLeaveRequestData(int id) {
 		String jpqlQuery = "SELECT elrq FROM EmployeeLeaveRequest elrq "
-				+ "WHERE elrq.leaveRequestId.employeeId = :employeeIds "+"AND elrq.approvedBy = 0";
+				+ "WHERE elrq.leaveRequestId.employeeId = :employeeIds " + "AND elrq.approvedBy = 0";
 		TypedQuery<EmployeeLeaveRequest> query = entityManager.createQuery(jpqlQuery, EmployeeLeaveRequest.class);
 		query.setParameter("employeeIds", id);
 		List<EmployeeLeaveRequest> result = query.getResultList();
 		return result;
 	}
-  
 
-  public List<EmployeeLeaveRequest> getApprovedEmployeeAndLeaveRequestData(int id) {
+	@Override
+	public List<EmployeeLeaveRequest> getApprovedAndPendingEmployeeAndLeaveRequestData(int id) {
 		String jpqlQuery = "SELECT elrq FROM EmployeeLeaveRequest elrq "
-				+ "WHERE elrq.leaveRequestId.employeeId = :employeeIds "+"AND elrq.approvedBy > 0 ";
+				+ "WHERE elrq.leaveRequestId.employeeId = :employeeIds " + "AND elrq.approvedBy != -1 ";
+		TypedQuery<EmployeeLeaveRequest> query = entityManager.createQuery(jpqlQuery, EmployeeLeaveRequest.class);
+		query.setParameter("employeeIds", id);
+		List<EmployeeLeaveRequest> result = query.getResultList();
+		return result;
+	}
+
+	@Override
+	public List<EmployeeLeaveRequest> getApprovedEmployeeAndLeaveRequestData(int id) {
+		String jpqlQuery = "SELECT elrq FROM EmployeeLeaveRequest elrq " + "WHERE "
+				+ " elrq.approvedBy = :employeeIds ";
 		TypedQuery<EmployeeLeaveRequest> query = entityManager.createQuery(jpqlQuery, EmployeeLeaveRequest.class);
 		query.setParameter("employeeIds", id);
 		List<EmployeeLeaveRequest> result = query.getResultList();

@@ -8,8 +8,15 @@ import javax.persistence.Table;
 @Entity
 @Table(name = "JobGradeWiseLeaves")
 public class JobGradeWiseLeaves {
-    
-    public JobGradeWiseLeaves(String jbgrId, int totalLeavesPerYear, int casualLeavesPerYear, int sickLeavesPerYear,
+
+	@Override
+	public String toString() {
+		return "JobGradeWiseLeaves [jbgrId=" + jbgrId + ", totalLeavesPerYear=" + totalLeavesPerYear
+				+ ", casualLeavesPerYear=" + casualLeavesPerYear + ", sickLeavesPerYear=" + sickLeavesPerYear
+				+ ", otherLeavesPerYear=" + otherLeavesPerYear + "]";
+	}
+
+	public JobGradeWiseLeaves(String jbgrId, int totalLeavesPerYear, int casualLeavesPerYear, int sickLeavesPerYear,
 			int otherLeavesPerYear) {
 		this.jbgrId = jbgrId;
 		this.totalLeavesPerYear = totalLeavesPerYear;
@@ -22,20 +29,20 @@ public class JobGradeWiseLeaves {
 	}
 
 	@Id
-    @Column(name = "jbgr_id")
-    private String jbgrId;
-    
-    @Column(name = "jbgr_totalnol")
-    private int totalLeavesPerYear;
-    
-    @Column(name = "jbgr_nocl")
-    private int casualLeavesPerYear;
-    
-    @Column(name = "jbgr_nosl")
-    private int sickLeavesPerYear;
-    
-    @Column(name = "jbgr_nool")
-    private int otherLeavesPerYear;
+	@Column(name = "jbgr_id")
+	private String jbgrId;
+
+	@Column(name = "jbgr_totalnol")
+	private int totalLeavesPerYear;
+
+	@Column(name = "jbgr_nocl")
+	private int casualLeavesPerYear;
+
+	@Column(name = "jbgr_nosl")
+	private int sickLeavesPerYear;
+
+	@Column(name = "jbgr_nool")
+	private int otherLeavesPerYear;
 
 	public String getJbgrId() {
 		return jbgrId;
@@ -76,6 +83,5 @@ public class JobGradeWiseLeaves {
 	public void setOtherLeavesPerYear(int otherLeavesPerYear) {
 		this.otherLeavesPerYear = otherLeavesPerYear;
 	}
- 
-    
+
 }
