@@ -49,5 +49,8 @@
         <bean id="employeeService" class="com.services.EmployeeLeaveService" autowire="byName" />
         <bean id="leaveValidation" class="com.models.LeaveValidationModel" autowire="byName"/>
         <bean id="approvedLeaveModel" class="com.models.ApprovedLeaveModel" scope="prototype"/>
-   
+        
+        <!-- Added -->
+        <bean id="jobGradeLeavesOutModel" class="com.models.JobGradeLeavesOutModel" scope="prototype" />
+        
 </beans>
